@@ -1,0 +1,145 @@
+apply plugin : 'war'
+apply plugin: 'java'
+apply plugin: 'cargo'
+apply plugin : 'eclipse'
+apply plugin: 'idea'
+
+apply plugin: 'rebel'
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        mavenRepo(name: 'zt-public-snapshots',
+                url: 'http://repos.zeroturnaround.com/nexus/content/groups/zt-public/')
+    }
+
+    dependencies {
+        classpath group: 'org.zeroturnaround', name: 'gradle-jrebel-plugin', version: '1.0.2-SNAPSHOT'
+    }
+}
+
+ext.springVersion = "3.1.2.RELEASE"
+sourceCompatibility = 1.6
+ext.slf4jVersion = "1.6.1"
+group = 'eu.korneev.sergey.battleships.ships'
+version = '1.0'
+repositories {
+    mavenCentral()
+}
+
+dependencies{
+
+  def cargoVersion = '1.2.2'
+    cargo "org.codehaus.cargo:cargo-core-uberjar:$cargoVersion",
+            "org.codehaus.cargo:cargo-ant:$cargoVersion"
+			
+
+    compile("log4j:log4j:1.2.15") {
+        exclude group: "com.sun.jdmk", module: "jmxtools"
+        exclude group: "com.sun.jmx", module: "jmxri"
+        exclude group: "javax.mail", module: "mail"
+        exclude group: "javax.jms", module: "jms"
+    }
+    runtime("log4j:log4j:1.2.15") {
+        exclude group: "com.sun.jdmk", module: "jmxtools"
+        exclude group: "com.sun.jmx", module: "jmxri"
+        exclude group: "javax.mail", module: "mail"
+        exclude group: "javax.jms", module: "jms"
+    }
+    
+    
+    compile "commons-dbcp:commons-dbcp:1.2.2"
+    compile "org.liquibase:liquibase-maven-plugin:2.0.1"
+    compile "org.springframework:spring-webmvc:$springVersion"
+    compile "org.springframework:spring-jdbc:$springVersion"
+    compile "org.springframework.security:spring-security-core:$springVersion"
+    compile "org.springframework.security:spring-security-web:$springVersion"
+    compile "org.springframework.security:spring-security-taglibs:$springVersion"
+    compile "org.springframework.security:spring-security-config:$springVersion"
+    
+    compile "postgresql:postgresql:9.1-901.jdbc4"
+    compile "javax.servlet:javax.servlet-api:3.0.1"
+
+
+    compile "javax.servlet:jstl:1.1.2", "taglibs:standard:1.1.2"  
+
+    testCompile "junit:junit:4.8.2"
+
+}
+
+
+
+war{
+      from 'src/webapp'
+
+
+    from('build/classes') {
+        include 'rebel.xml'
+        
+        into('WEB-INF/classes')
+    }
+    
+    from('src/main/java') {
+        include 'log4j.xml'
+        include 'project.properties'
+        into('WEB-INF/classes')
+    }
+    from('src/main/webapp/WEB-INF/changelog'){
+    	into('WEB-INF/classes/eu/korneev/sergey/battleships/dao/change')
+    }
+    from('src/main/webapp/WEB-INF'){
+    	exclude('changelog/*')
+    }
+}
+
+
+
+rebel{
+    alwaysGenerate = "true"
+
+}
+
+
+task deploy(dependsOn: 'war') << {
+   copy {
+   		from('build/libs'){
+   			include '*.war'
+   		}
+        into "${tomcatHome}/webapps"
+    }
+}
+
+			
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'org.gradle.api.plugins:gradle-cargo-plugin:0.5.6'
+    }
+}
+
+
+
+cargo{
+  containerId = "${remoteContainerId}"
+    port = Integer.parseInt(remotePort)
+
+    deployable {
+        context = "${remoteContext}"
+    }
+
+    remote {
+        hostname = "${remoteHostName}"
+        username = "${remoteUserName}"
+        password = "${remotePassword}"
+    }
+
+
+}
+
+
+
+
